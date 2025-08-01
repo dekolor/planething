@@ -159,7 +159,7 @@ function Content() {
                         From
                       </span>
                     </div>
-                    <p className="text-2xl font-bold">{flight.departure}</p>
+                    <p className="text-2xl font-bold">{flight.departureIcao}</p>
                   </div>
 
                   {/* Flight Path */}
@@ -177,14 +177,14 @@ function Content() {
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">To</span>
                     </div>
-                    <p className="text-2xl font-bold">{flight.arrival}</p>
+                    <p className="text-2xl font-bold">{flight.arrivalIcao}</p>
                   </div>
                 </div>
 
                 {/* Flight Info */}
                 <div className="text-right space-y-2">
                   <Badge variant="secondary" className="text-sm">
-                    {flight.flightNumber}
+                    {flight.flightIcao ?? flight.flightNumber}
                   </Badge>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />

@@ -5,6 +5,29 @@ import { api } from "./_generated/api";
 // Write your Convex functions in any file inside this directory (`convex`).
 // See https://docs.convex.dev/functions for more.
 
+interface Flight {
+  airline: { name: any; icaoCode: any };
+  codeshared: {
+    airline: { name: any; icaoCode: any };
+    flight: { number: any; icaoNumber: any };
+  };
+  departure: {
+    icaoCode: any;
+    delay: any;
+    scheduledTime: any;
+    estimatedTime: any;
+    terminal: any;
+  };
+  arrival: {
+    icaoCode: any;
+    delay: any;
+    scheduledTime: any;
+    estimatedTime: any;
+    terminal: any;
+  };
+  flight: { number: any; icaoNumber: any };
+}
+
 export const listFlights = query({
   handler: async (ctx) => {
     const flights = await ctx.db.query("flights").collect();
@@ -18,9 +41,24 @@ export const addFlights = mutation({
   args: {
     flights: v.array(
       v.object({
-        flightNumber: v.string(),
-        departure: v.string(),
-        arrival: v.string(),
+        airlineName: v.string(),
+        airlineIcao: v.string(),
+        codesharedAirlineName: v.optional(v.string()),
+        codesharedAirlineIcao: v.optional(v.string()),
+        codesharedFlightNumber: v.optional(v.string()),
+        codesharedFlightIcao: v.optional(v.string()),
+        departureIcao: v.string(),
+        departureDelay: v.optional(v.string()),
+        departureScheduled: v.string(),
+        departureEstimated: v.optional(v.string()),
+        departureTerminal: v.optional(v.string()),
+        arrivalIcao: v.string(),
+        arrivalDelay: v.optional(v.string()),
+        arrivalScheduled: v.string(),
+        arrivalEstimated: v.optional(v.string()),
+        arrivalTerminal: v.optional(v.string()),
+        flightNumber: v.optional(v.string()),
+        flightIcao: v.string(),
       }),
     ),
   },
@@ -52,19 +90,30 @@ export const fetchDepartures = action({
 
     const response = await data.json();
 
-    const flights = response.data.map(
-      (flight: {
-        flight: { icaoNumber: any };
-        departure: { icaoCode: any };
-        arrival: { icaoCode: any };
-      }) => {
-        return {
-          flightNumber: flight.flight.icaoNumber,
-          departure: flight.departure.icaoCode,
-          arrival: flight.arrival.icaoCode,
-        };
-      },
-    );
+    const flights = response.data.map((flight: Flight) => {
+      return {
+        airlineName: flight.airline.name,
+        airlineIcao: flight.airline.icaoCode,
+        codesharedAirlineName: flight.codeshared?.airline?.name ?? undefined,
+        codesharedAirlineIcao:
+          flight.codeshared?.airline?.icaoCode ?? undefined,
+        codesharedFlightNumber: flight.codeshared?.flight?.number ?? undefined,
+        codesharedFlightIcao:
+          flight.codeshared?.flight?.icaoNumber ?? undefined,
+        departureIcao: flight.departure.icaoCode,
+        departureDelay: flight.departure.delay ?? undefined,
+        departureScheduled: flight.departure.scheduledTime,
+        departureEstimated: flight.departure.estimatedTime ?? undefined,
+        departureTerminal: flight.departure.terminal ?? undefined,
+        arrivalIcao: flight.arrival.icaoCode,
+        arrivalDelay: flight.arrival.delay ?? undefined,
+        arrivalScheduled: flight.arrival.scheduledTime,
+        arrivalEstimated: flight.arrival.estimatedTime ?? undefined,
+        arrivalTerminal: flight.arrival.terminal ?? undefined,
+        flightNumber: flight.flight.number ?? undefined,
+        flightIcao: flight.flight.icaoNumber,
+      };
+    });
 
     await ctx.runMutation(api.myFunctions.truncateFlights);
 

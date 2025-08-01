@@ -7,12 +7,24 @@ import { authTables } from "@convex-dev/auth/server";
 // The schema provides more precise TypeScript types.
 export default defineSchema({
   ...authTables,
-  numbers: defineTable({
-    value: v.number(),
-  }),
   flights: defineTable({
-    flightNumber: v.string(),
-    departure: v.string(),
-    arrival: v.string(),
+    airlineName: v.string(),
+    airlineIcao: v.string(),
+    codesharedAirlineName: v.optional(v.string()),
+    codesharedAirlineIcao: v.optional(v.string()),
+    codesharedFlightNumber: v.optional(v.string()),
+    codesharedFlightIcao: v.optional(v.string()),
+    departureIcao: v.string(),
+    departureDelay: v.optional(v.string()),
+    departureScheduled: v.string(),
+    departureEstimated: v.optional(v.string()),
+    departureTerminal: v.optional(v.string()),
+    arrivalIcao: v.string(),
+    arrivalDelay: v.optional(v.string()),
+    arrivalScheduled: v.string(),
+    arrivalEstimated: v.optional(v.string()),
+    arrivalTerminal: v.optional(v.string()),
+    flightNumber: v.optional(v.string()),
+    flightIcao: v.string(),
   }),
 });
