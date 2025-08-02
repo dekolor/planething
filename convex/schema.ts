@@ -26,5 +26,7 @@ export default defineSchema({
     arrivalTerminal: v.optional(v.string()),
     flightNumber: v.optional(v.string()),
     flightIcao: v.string(),
-  }),
+  })
+    .index("by_flight_and_departure", ["flightIcao", "departureScheduled"])
+    .index("by_departure_icao", ["departureIcao"]),
 });

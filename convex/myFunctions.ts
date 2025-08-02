@@ -40,7 +40,7 @@ export const listFlights = query({
       .query("flights")
       .order("desc")
       .paginate(args.paginationOpts);
-    
+
     return {
       page: result.page,
       isDone: result.isDone,
@@ -52,14 +52,14 @@ export const listFlights = query({
 export const getFlightStats = query({
   handler: async (ctx) => {
     const flights = await ctx.db.query("flights").collect();
-    
+
     const totalFlights = flights.length;
     const delayedFlights = flights.filter(
-      (f) => f.departureDelay || f.arrivalDelay
+      (f) => f.departureDelay || f.arrivalDelay,
     ).length;
     const onTimeFlights = totalFlights - delayedFlights;
     const uniqueAirports = new Set(flights.map((f) => f.departureIcao)).size;
-    
+
     return {
       totalFlights,
       delayedFlights,
@@ -69,6 +69,66 @@ export const getFlightStats = query({
   },
 });
 
+export const getFlightById = query({
+  args: { id: v.id("flights") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const upsertFlights = mutation({
+  args: {
+    flights: v.array(
+      v.object({
+        airlineName: v.string(),
+        airlineIcao: v.string(),
+        codesharedAirlineName: v.optional(v.string()),
+        codesharedAirlineIcao: v.optional(v.string()),
+        codesharedFlightNumber: v.optional(v.string()),
+        codesharedFlightIcao: v.optional(v.string()),
+        departureIcao: v.string(),
+        departureDelay: v.optional(v.string()),
+        departureScheduled: v.string(),
+        departureEstimated: v.optional(v.string()),
+        departureTerminal: v.optional(v.string()),
+        arrivalIcao: v.string(),
+        arrivalDelay: v.optional(v.string()),
+        arrivalScheduled: v.string(),
+        arrivalEstimated: v.optional(v.string()),
+        arrivalTerminal: v.optional(v.string()),
+        flightNumber: v.optional(v.string()),
+        flightIcao: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { flights } = args;
+
+    for (const flight of flights) {
+      // Try to find existing flight with same flightIcao and departureScheduled
+      const existingFlight = await ctx.db
+        .query("flights")
+        .withIndex("by_flight_and_departure", (q) =>
+          q.eq("flightIcao", flight.flightIcao).eq("departureScheduled", flight.departureScheduled)
+        )
+        .unique();
+
+      if (existingFlight) {
+        // Update existing flight
+        await ctx.db.patch(existingFlight._id, {
+          ...flight,
+        });
+      } else {
+        // Insert new flight
+        await ctx.db.insert("flights", {
+          ...flight,
+        });
+      }
+    }
+  },
+});
+
+// Keep the old addFlights for backward compatibility if needed
 export const addFlights = mutation({
   args: {
     flights: v.array(
@@ -114,10 +174,34 @@ export const truncateFlights = mutation({
   },
 });
 
-export const fetchDepartures = action({
-  handler: async (ctx) => {
+export const cleanupOldFlights = mutation({
+  args: {
+    olderThanHours: v.optional(v.number()), // Default to 24 hours
+  },
+  handler: async (ctx, args) => {
+    const hoursAgo = args.olderThanHours ?? 24;
+    const cutoffTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+    
+    const flights = await ctx.db.query("flights").collect();
+    
+    for (const flight of flights) {
+      const departureTime = new Date(flight.departureScheduled);
+      if (departureTime < cutoffTime) {
+        await ctx.db.delete(flight._id);
+      }
+    }
+  },
+});
+
+export const fetchFlights = action({
+  args: {
+    airportIcao: v.string(),
+    type: v.string(),
+  },
+
+  handler: async (ctx, args) => {
     const data = await fetch(
-      `https://api.aviationstack.com/v1/timetable?iataCode=OTP&type=departure&access_key=${process.env.AVIATIONSTACK_API_KEY}`,
+      `https://api.aviationstack.com/v1/timetable?iataCode=${args.airportIcao}&type=${args.type}&access_key=${process.env.AVIATIONSTACK_API_KEY}`,
     );
 
     const response = await data.json();
@@ -147,9 +231,7 @@ export const fetchDepartures = action({
       };
     });
 
-    await ctx.runMutation(api.myFunctions.truncateFlights);
-
-    await ctx.runMutation(api.myFunctions.addFlights, {
+    await ctx.runMutation(api.myFunctions.upsertFlights, {
       flights,
     });
   },

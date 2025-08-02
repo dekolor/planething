@@ -27,7 +27,9 @@ Planething is a React-based flight tracking dashboard that displays real-time fl
 ## Architecture
 
 ### Frontend (src/)
-- **App.tsx** - Main application component with authentication flow, flight dashboard, and responsive UI
+- **App.tsx** - Main application component with React Router setup and authentication
+- **components/Dashboard.tsx** - Main dashboard with flight list, stats, and infinite scrolling
+- **components/FlightDetails.tsx** - Detailed flight information page with comprehensive flight data
 - **components/ui/** - Reusable UI components (badge, card, table) following shadcn/ui patterns
 - **hooks/useInfiniteFlights.ts** - Custom hook for infinite scrolling flight pagination with intersection observer
 - **lib/utils.ts** - Utility functions (likely for class name merging with clsx/tailwind-merge)
@@ -37,23 +39,30 @@ Planething is a React-based flight tracking dashboard that displays real-time fl
 - **myFunctions.ts** - Core backend functions:
   - `listFlights` - Paginated query to fetch flights (10 per page)
   - `getFlightStats` - Query to get statistics for all flights (totals, delays, airports)
-  - `addFlights` - Mutation to bulk insert flight data
-  - `truncateFlights` - Mutation to clear all flights
-  - `fetchDepartures` - Action to fetch live flight data from AviationStack API
+  - `getFlightById` - Query to fetch single flight by ID for details page
+  - `upsertFlights` - Mutation to insert/update flight data (prevents duplicates)
+  - `addFlights` - Mutation to bulk insert flight data (legacy)
+  - `cleanupOldFlights` - Mutation to remove flights older than specified hours
+  - `truncateFlights` - Mutation to clear all flights (legacy)
+  - `fetchFlights` - Action to fetch live flight data from AviationStack API with upsert
 - **auth.config.ts** - Convex Auth configuration
 - **auth.ts** - Authentication setup (likely exports auth utilities)
 
 ### Key Data Flow
-1. Flight data is fetched from AviationStack API (OTP airport departures) via `fetchDepartures` action
-2. Data is processed and stored in Convex flights table
-3. Frontend queries flights using paginated `listFlights` (10 per page) and displays in dashboard format
-4. Stats header uses separate `getFlightStats` query to show totals for ALL flights in database
-5. Infinite scrolling loads more flights as user scrolls down using intersection observer
-6. UI shows flight cards with departure/arrival info, delays, and real-time status
+1. Flight data is fetched from AviationStack API via `fetchFlights` action (departures/arrivals separately)
+2. Data is processed and upserted to Convex flights table (updates existing, inserts new)
+3. Upsert prevents data loss when departure/arrival fetches run at different times
+4. Frontend queries flights using paginated `listFlights` (10 per page) and displays in dashboard format
+5. Stats header uses separate `getFlightStats` query to show totals for ALL flights in database
+6. Infinite scrolling loads more flights as user scrolls down using intersection observer
+7. Clicking on flight cards navigates to `/flight/:id` route showing detailed flight information
+8. Flight details page uses `getFlightById` to fetch comprehensive flight data
+9. Old flights can be cleaned up using `cleanupOldFlights` mutation
+10. UI shows flight cards with departure/arrival info, delays, and real-time status
 
 ## Technology Stack
 
-- **Frontend**: React 19, Vite, Tailwind CSS v4, TypeScript
+- **Frontend**: React 19, Vite, Tailwind CSS v4, TypeScript, React Router
 - **Backend**: Convex (database + serverless functions)
 - **Authentication**: Convex Auth with password provider
 - **UI Components**: Custom components with Radix UI primitives
