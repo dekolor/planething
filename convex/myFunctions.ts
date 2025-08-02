@@ -29,10 +29,42 @@ interface Flight {
 }
 
 export const listFlights = query({
+  args: {
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.union(v.string(), v.null()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const result = await ctx.db
+      .query("flights")
+      .order("desc")
+      .paginate(args.paginationOpts);
+    
+    return {
+      page: result.page,
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+    };
+  },
+});
+
+export const getFlightStats = query({
   handler: async (ctx) => {
     const flights = await ctx.db.query("flights").collect();
+    
+    const totalFlights = flights.length;
+    const delayedFlights = flights.filter(
+      (f) => f.departureDelay || f.arrivalDelay
+    ).length;
+    const onTimeFlights = totalFlights - delayedFlights;
+    const uniqueAirports = new Set(flights.map((f) => f.departureIcao)).size;
+    
     return {
-      flights,
+      totalFlights,
+      delayedFlights,
+      onTimeFlights,
+      uniqueAirports,
     };
   },
 });
@@ -75,8 +107,8 @@ export const addFlights = mutation({
 
 export const truncateFlights = mutation({
   handler: async (ctx) => {
-    const flights = await ctx.runQuery(api.myFunctions.listFlights);
-    for (const flight of flights.flights) {
+    const flights = await ctx.db.query("flights").collect();
+    for (const flight of flights) {
       await ctx.db.delete(flight._id);
     }
   },
