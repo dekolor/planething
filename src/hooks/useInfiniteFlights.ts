@@ -4,7 +4,9 @@ import { api } from "../../convex/_generated/api";
 
 const FLIGHTS_PER_PAGE = 10;
 
-export function useInfiniteFlights() {
+type FlightFilter = "all" | "ontime" | "delayed";
+
+export function useInfiniteFlights(filter: FlightFilter = "all") {
   const [allFlights, setAllFlights] = useState<any[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -17,7 +19,16 @@ export function useInfiniteFlights() {
       numItems: FLIGHTS_PER_PAGE,
       cursor,
     },
+    filter: filter === "all" ? undefined : filter,
   }) ?? { page: [], isDone: true, continueCursor: null };
+
+  // Reset flights when filter changes
+  useEffect(() => {
+    setAllFlights([]);
+    setCursor(null);
+    setIsLoadingMore(false);
+    setHasMoreFlights(true);
+  }, [filter]);
 
   useEffect(() => {
     if (page && page.length > 0) {

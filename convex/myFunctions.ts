@@ -34,12 +34,41 @@ export const listFlights = query({
       numItems: v.number(),
       cursor: v.union(v.string(), v.null()),
     }),
+    filter: v.optional(v.union(v.literal("all"), v.literal("ontime"), v.literal("delayed"))),
   },
   handler: async (ctx, args) => {
-    const result = await ctx.db
-      .query("flights")
-      .order("desc")
-      .paginate(args.paginationOpts);
+    let query = ctx.db.query("flights").order("desc");
+    
+    // Apply filter if specified
+    if (args.filter === "ontime") {
+      query = query.filter((q) => 
+        q.and(
+          q.or(
+            q.eq(q.field("departureDelay"), undefined),
+            q.eq(q.field("departureDelay"), null)
+          ),
+          q.or(
+            q.eq(q.field("arrivalDelay"), undefined),
+            q.eq(q.field("arrivalDelay"), null)
+          )
+        )
+      );
+    } else if (args.filter === "delayed") {
+      query = query.filter((q) => 
+        q.or(
+          q.and(
+            q.neq(q.field("departureDelay"), undefined),
+            q.neq(q.field("departureDelay"), null)
+          ),
+          q.and(
+            q.neq(q.field("arrivalDelay"), undefined),
+            q.neq(q.field("arrivalDelay"), null)
+          )
+        )
+      );
+    }
+    
+    const result = await query.paginate(args.paginationOpts);
 
     return {
       page: result.page,
