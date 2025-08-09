@@ -1,24 +1,30 @@
 // components/FlightDetails.tsx
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Card, CardContent } from "./ui/card";
+import { Footer as GlobalFooter } from "./Footer";
 import { Badge } from "./ui/badge";
 import {
   Clock,
-  MapPin,
   Plane,
   ArrowLeft,
   Calendar,
   Building,
   ExternalLink,
+  Copy,
+  Check,
+  ArrowRight,
 } from "lucide-react";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const fmt = (
   d: string | number | Date,
   opts?: Intl.DateTimeFormatOptions,
-  locale: string = "en-US",
+  locale: string = typeof navigator !== "undefined"
+    ? navigator.language || "en-US"
+    : "en-US",
 ) =>
   new Date(d).toLocaleString(locale, {
     hour: "2-digit",
@@ -28,7 +34,6 @@ const fmt = (
 
 function fr24Url(flightIcao?: string) {
   if (!flightIcao) return "https://www.flightradar24.com/";
-  // FR24 usually uses ICAO/flight code directly; spaces removed.
   const code = String(flightIcao).replace(/\s+/g, "");
   return `https://www.flightradar24.com/data/flights/${encodeURIComponent(
     code.toLowerCase(),
@@ -44,6 +49,8 @@ export function FlightDetails() {
     id ? ({ id: id as Id<"flights"> } as const) : "skip",
   );
 
+  const [copied, setCopied] = useState(false);
+
   if (!id) {
     return (
       <CenteredState
@@ -54,7 +61,7 @@ export function FlightDetails() {
   }
 
   if (flight === undefined) {
-    return <CenteredSpinner label="Loading flight details..." />;
+    return <CenteredSpinner label="Loading flight..." />;
   }
 
   if (flight === null) {
@@ -79,19 +86,35 @@ export function FlightDetails() {
   const departureTime = flight.departureEstimated || flight.departureScheduled;
   const arrivalTime = flight.arrivalEstimated || flight.arrivalScheduled;
 
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        flight.flightIcao || flight.flightNumber || "",
+      );
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
-    <div className="relative min-h-screen">
-      <HeaderBar
-        left={
+    <div className="relative min-h-screen fade-in-up">
+      <Decor />
+
+      {/* Header (sticky to avoid overlay/push issues) */}
+      <div className="pointer-events-none sticky inset-x-0 top-0 z-40 flex justify-center p-3">
+        <div className="pointer-events-auto flex w-full max-w-7xl items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_40px_-20px_rgba(56,189,248,0.35)] backdrop-blur-md sm:px-4">
           <button
-            onClick={() => { void navigate("/"); }}
+            onClick={() => {
+              void navigate("/");
+            }}
             className="inline-flex items-center gap-2 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
-        }
-        right={
+
           <div className="inline-flex items-center gap-2">
             <Badge className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-mono text-xs text-cyan-200">
               {flight.flightIcao}
@@ -99,145 +122,236 @@ export function FlightDetails() {
             <span className="text-white/55">•</span>
             <span className="text-sm text-white/70">{flight.airlineName}</span>
           </div>
-        }
-      />
+        </div>
+      </div>
 
-      <Decor />
-
-      <main className="relative mx-auto max-w-7xl px-3 py-8 sm:px-4">
-        {/* Delay banner - compact */}
-        {hasDelay && (
-          <div className="mb-6 overflow-hidden rounded-lg border border-amber-300/30 bg-amber-400/10">
-            <div className="flex items-center gap-2 border-b border-white/10 bg-white/5 px-4 py-2.5">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-              <h2 className="text-sm font-medium text-amber-200">
-                This flight is delayed
-              </h2>
-            </div>
-            <div className="flex flex-wrap gap-2 px-4 py-3 text-xs text-amber-100/90">
-              {flight.departureDelay && (
-                <span className="rounded-full border border-amber-300/30 bg-amber-400/10 px-2.5 py-1">
-                  Departure +{flight.departureDelay}
-                </span>
-              )}
-              {flight.arrivalDelay && (
-                <span className="rounded-full border border-amber-300/30 bg-amber-400/10 px-2.5 py-1">
-                  Arrival +{flight.arrivalDelay}
-                </span>
-              )}
-            </div>
+      <main className="relative z-10 mx-auto mt-6 max-w-7xl px-3 pb-12 sm:mt-8 sm:px-4">
+        {/* Ticket hero */}
+        <div className="relative mb-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -left-16 -top-16 h-40 w-40 rounded-full bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.14),transparent_60%)] blur-2xl" />
+            <div className="absolute -bottom-20 -right-16 h-52 w-52 rounded-full bg-[radial-gradient(circle_at_center,rgba(217,70,239,0.14),transparent_60%)] blur-2xl" />
+            <div className="absolute inset-0 opacity-[0.05] [background-image:radial-gradient(circle_at_center,white_1px,transparent_1.6px)] [background-size:22px_22px]" />
           </div>
-        )}
 
-        {/* Overview - tighter layout */}
-        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* Departure */}
-          <InfoPanel
-            tone="cyan"
-            title="Departure"
-            code={flight.departureIcao}
-            terminal={flight.departureTerminal}
-            time={fmt(departureTime)}
-            date={fmt(departureTime, {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-            scheduled={
-              flight.departureEstimated &&
-              flight.departureEstimated !== flight.departureScheduled
-                ? fmt(flight.departureScheduled)
-                : undefined
-            }
-          />
-
-          {/* Path */}
-          <div className="relative overflow-hidden rounded-lg border border-white/10 bg-white/5">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_40%,rgba(56,189,248,0.1),transparent),radial-gradient(50%_60%_at_50%_60%,rgba(217,70,239,0.1),transparent)]" />
-            <div className="relative flex h-full flex-col items-center justify-center p-6">
-              <div className="mb-2 flex items-center">
-                <div className="h-px w-20 bg-gradient-to-r from-transparent via-cyan-300 to-cyan-300" />
-                <div className="mx-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400/20 via-sky-400/20 to-fuchsia-400/20 ring-1 ring-white/10">
-                  <Plane className="h-4 w-4 text-white" />
-                </div>
-                <div className="h-px w-20 bg-gradient-to-l from-transparent via-fuchsia-300 to-fuchsia-300" />
-              </div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-white/60">
-                Flight Path
-              </div>
-              <div
-                className={`mt-2 inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs ring-1 ${
-                  hasDelay
-                    ? "bg-amber-400/10 text-amber-200 ring-amber-300/30"
-                    : "bg-emerald-400/10 text-emerald-200 ring-emerald-300/30"
-                }`}
-              >
+          <div className="relative grid grid-cols-1 gap-0 sm:grid-cols-[42%_1fr]">
+            {/* Left: route summary */}
+            <div className="border-b border-white/10 p-5 sm:border-b-0 sm:border-r">
+              <div className="mb-3 flex items-center gap-2">
                 <span
                   className={`h-1.5 w-1.5 animate-pulse rounded-full ${
                     hasDelay ? "bg-amber-400" : "bg-emerald-400"
                   }`}
                 />
-                {hasDelay ? "Delayed" : "On Time"}
+                <span
+                  className={`text-sm font-medium ${
+                    hasDelay ? "text-amber-200" : "text-emerald-200"
+                  }`}
+                >
+                  {hasDelay ? "Delayed" : "On Time"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="text-[11px] uppercase tracking-wide text-white/60">
+                    Departure
+                  </div>
+                  <div className="mt-0.5 text-3xl font-semibold text-white">
+                    {flight.departureIcao}
+                  </div>
+                  {flight.departureTerminal && (
+                    <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/75">
+                      <Building className="h-3.5 w-3.5" />
+                      Terminal {flight.departureTerminal}
+                    </div>
+                  )}
+                  <div className="mt-2 flex items-center gap-1.5 text-white/85">
+                    <Clock className="h-4 w-4" />
+                    <span className="text-base">{fmt(departureTime)}</span>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-white/60">
+                    <Calendar className="h-3 w-3" />
+                    <span>
+                      {fmt(departureTime, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mx-3 hidden flex-col items-center sm:flex">
+                  <div className="h-px w-16 bg-gradient-to-r from-transparent via-cyan-300 to-cyan-300" />
+                  <div className="my-1 rounded-full bg-white/10 p-3 ring-1 ring-white/10">
+                    <Plane className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="h-px w-16 bg-gradient-to-l from-transparent via-fuchsia-300 to-fuchsia-300" />
+                </div>
+
+                <div className="min-w-0 text-right">
+                  <div className="text-[11px] uppercase tracking-wide text-white/60">
+                    Arrival
+                  </div>
+                  <div className="mt-0.5 text-3xl font-semibold text-white">
+                    {flight.arrivalIcao}
+                  </div>
+                  {flight.arrivalTerminal && (
+                    <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/75">
+                      <Building className="h-3.5 w-3.5" />
+                      Terminal {flight.arrivalTerminal}
+                    </div>
+                  )}
+                  <div className="mt-2 flex items-center justify-end gap-1.5 text-white/85">
+                    <Clock className="h-4 w-4" />
+                    <span className="text-base">{fmt(arrivalTime)}</span>
+                  </div>
+                  <div className="mt-0.5 flex items-center justify-end gap-1.5 text-xs text-white/60">
+                    <Calendar className="h-3 w-3" />
+                    <span>
+                      {fmt(arrivalTime, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: actions + timeline */}
+            <div className="p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="inline-flex items-center gap-2">
+                  <Badge className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-mono text-xs text-cyan-200">
+                    {flight.flightIcao}
+                  </Badge>
+                  {flight.flightNumber && (
+                    <span className="text-xs text-white/60">
+                      Also: {flight.flightNumber}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={copyCode}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white"
+                    aria-live="polite"
+                    aria-label="Copy flight code"
+                    title="Copy flight code"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 text-emerald-300" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy code
+                      </>
+                    )}
+                  </button>
+                  <a
+                    href={fr24Url(flight.flightIcao)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white"
+                    title="Open in FlightRadar24"
+                  >
+                    View on FR24
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Vertical timeline */}
+              <div className="mt-4 grid grid-cols-[auto_1fr] gap-x-3">
+                <div className="flex flex-col items-center">
+                  <span className="h-2 w-2 rounded-full bg-cyan-300" />
+                  <span className="my-1 h-10 w-px bg-white/15" />
+                  <ArrowRight className="h-3.5 w-3.5 text-white/50" />
+                  <span className="my-1 h-10 w-px bg-white/15" />
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      hasDelay ? "bg-amber-300" : "bg-emerald-300"
+                    }`}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs text-white/60">Scheduled</div>
+                    <div className="mt-1 grid gap-2 sm:grid-cols-2">
+                      <div className="text-sm text-white">
+                        Depart:{" "}
+                        {fmt(flight.departureScheduled, {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                      <div className="text-sm text-white">
+                        Arrive:{" "}
+                        {fmt(flight.arrivalScheduled, {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {(flight.departureEstimated || flight.arrivalEstimated) && (
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                      <div className="mb-1 text-xs text-white/60">Updated</div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {flight.departureEstimated && (
+                          <div className="text-sm text-white/85">
+                            Departure:{" "}
+                            {fmt(flight.departureEstimated, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        )}
+                        {flight.arrivalEstimated && (
+                          <div className="text-sm text-white/85">
+                            Arrival:{" "}
+                            {fmt(flight.arrivalEstimated, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Arrival */}
-          <InfoPanel
-            tone="fuchsia"
-            title="Arrival"
-            code={flight.arrivalIcao}
-            terminal={flight.arrivalTerminal}
-            time={fmt(arrivalTime)}
-            date={fmt(arrivalTime, {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-            scheduled={
-              flight.arrivalEstimated &&
-              flight.arrivalEstimated !== flight.arrivalScheduled
-                ? fmt(flight.arrivalScheduled)
-                : undefined
-            }
-          />
         </div>
 
-        {/* Actions row (includes FR24 button) */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2">
-            <Badge className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-mono text-xs text-cyan-200">
-              {flight.flightIcao}
-            </Badge>
-            {flight.flightNumber && (
-              <span className="text-xs text-white/60">
-                Also: {flight.flightNumber}
-              </span>
-            )}
-          </div>
-          <a
-            href={fr24Url(flight.flightIcao)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white/85 ring-1 ring-white/10 transition hover:bg-white/10"
-            title="Open in FlightRadar24"
-          >
-            View on FlightRadar24
-            <ExternalLink className="h-4 w-4" />
-          </a>
-        </div>
-
-        {/* Details - compact */}
+        {/* Info cards */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* Airline */}
-          <Card className="overflow-hidden rounded-lg border border-white/10 bg-white/5">
+          <Card className="overflow-hidden">
             <CardContent className="p-5">
               <h3 className="mb-3 text-base font-semibold text-white">
-                Airline Information
+                Airline
               </h3>
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-white/65">Airline</p>
+                  <p className="text-xs text-white/65">Name</p>
                   <p className="text-sm font-medium text-white">
                     {flight.airlineName}
                   </p>
@@ -247,7 +361,7 @@ export function FlightDetails() {
                 </div>
                 {flight.codesharedAirlineName && (
                   <div>
-                    <p className="text-xs text-white/65">Codeshare Partner</p>
+                    <p className="text-xs text-white/65">Codeshare</p>
                     <p className="text-sm font-medium text-white">
                       {flight.codesharedAirlineName}
                     </p>
@@ -261,11 +375,10 @@ export function FlightDetails() {
             </CardContent>
           </Card>
 
-          {/* Schedule */}
-          <Card className="overflow-hidden rounded-lg border border-white/10 bg-white/5">
+          <Card className="overflow-hidden">
             <CardContent className="p-5">
               <h3 className="mb-3 text-base font-semibold text-white">
-                Schedule Details
+                Schedule
               </h3>
               <div className="space-y-3">
                 <div>
@@ -294,62 +407,25 @@ export function FlightDetails() {
                     })}
                   </p>
                 </div>
-                {(flight.departureEstimated || flight.arrivalEstimated) && (
-                  <div className="border-t border-white/10 pt-2.5">
-                    <p className="mb-1.5 text-xs text-white/65">
-                      Updated Times
-                    </p>
-                    {flight.departureEstimated && (
-                      <p className="text-sm text-white/85">
-                        Departure:{" "}
-                        {fmt(flight.departureEstimated, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    )}
-                    {flight.arrivalEstimated && (
-                      <p className="text-sm text-white/85">
-                        Arrival:{" "}
-                        {fmt(flight.arrivalEstimated, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </main>
+      <GlobalFooter />
     </div>
-  );
-}
-
-function HeaderBar({
-  left,
-  right,
-}: {
-  left?: React.ReactNode;
-  right?: React.ReactNode;
-}) {
-  return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b1220]/70 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-2 sm:px-4">
-        {left}
-        {right}
-      </div>
-    </header>
   );
 }
 
 function Decor() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
-      <div className="absolute inset-0 bg-[#080d18]" />
-      <div className="absolute inset-0 bg-[radial-gradient(1100px_520px_at_50%_-80px,rgba(56,189,248,0.08),transparent),radial-gradient(800px_460px_at_100%_20%,rgba(217,70,239,0.08),transparent),radial-gradient(720px_520px_at_0%_30%,rgba(14,165,233,0.06),transparent)]" />
+      <div className="absolute inset-0 bg-[#060a12]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1100px_520px_at_50%_-80px,rgba(56,189,248,0.09),transparent),radial-gradient(800px_460px_at_100%_20%,rgba(217,70,239,0.08),transparent),radial-gradient(720px_520px_at_0%_30%,rgba(14,165,233,0.06),transparent)]" />
+      <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_center,white_1px,transparent_1.6px)] [background-size:22px_22px]" />
+      <div className="pointer-events-none absolute -left-24 top-[22%] h-72 w-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.12),transparent_60%)] blur-2xl animate-[spin_50s_linear_infinite]" />
+      <div className="pointer-events-none absolute -right-24 bottom-[12%] h-80 w-80 rounded-full bg-[radial-gradient(circle_at_center,rgba(217,70,239,0.12),transparent_60%)] blur-2xl animate-[spin_60s_linear_infinite]" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
     </div>
   );
 }
@@ -393,71 +469,6 @@ function CenteredState({
           )}
           {cta && <div className="mt-5">{cta}</div>}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function InfoPanel(props: {
-  tone: "cyan" | "fuchsia";
-  title: string;
-  code: string;
-  terminal?: string | null;
-  time: string;
-  date: string;
-  scheduled?: string;
-}) {
-  const tone =
-    props.tone === "cyan"
-      ? {
-          chipBg: "bg-cyan-400/10",
-          chipRing: "ring-cyan-300/20",
-          chipIcon: "text-cyan-300",
-          glow: "bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.12),transparent_60%)]",
-        }
-      : {
-          chipBg: "bg-fuchsia-400/10",
-          chipRing: "ring-fuchsia-300/20",
-          chipIcon: "text-fuchsia-300",
-          glow: "bg-[radial-gradient(circle_at_center,rgba(217,70,239,0.12),transparent_60%)]",
-        };
-
-  return (
-    <div className="relative overflow-hidden rounded-lg border border-white/10 bg-white/5 p-5">
-      <div
-        className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full ${tone.glow}`}
-      />
-      <div className="relative text-center">
-        <div
-          className={`mx-auto mb-2 w-fit rounded-md ${tone.chipBg} p-2 ring-1 ${tone.chipRing}`}
-        >
-          <MapPin className={`h-5 w-5 ${tone.chipIcon}`} />
-        </div>
-        <div className="text-[11px] uppercase tracking-wide text-white/60">
-          {props.title}
-        </div>
-        <div className="mt-0.5 text-3xl font-semibold tracking-wide text-white">
-          {props.code}
-        </div>
-        {props.terminal && (
-          <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/75">
-            <Building className="h-3.5 w-3.5" />
-            Terminal {props.terminal}
-          </div>
-        )}
-        <div className="mt-2 flex items-center justify-center gap-1.5 text-white/85">
-          <Clock className="h-4 w-4" />
-          <span className="text-base">{props.time}</span>
-        </div>
-        <div className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-white/60">
-          <Calendar className="h-3 w-3" />
-          <span>{props.date}</span>
-        </div>
-        {props.scheduled && (
-          <div className="mt-1 text-[11px] text-white/55">
-            Scheduled: {props.scheduled}
-          </div>
-        )}
       </div>
     </div>
   );
