@@ -27,9 +27,9 @@ export default function App() {
         <Route
           path="/flight/:id"
           element={
-            <Authenticated>
-              <FlightDetails />
-            </Authenticated>
+            // <Authenticated>
+            <FlightDetails />
+            // </Authenticated>
           }
         />
       </Routes>
@@ -43,16 +43,16 @@ function MainApp() {
       <SkyBackdrop />
       <TopBar />
       <main className="relative z-10">
-        <Authenticated>
-          <Showcase />
-        </Authenticated>
+        {/* <Authenticated> */}
+        <Showcase />
+        {/* </Authenticated> */}
         <section id="content" className="mx-auto max-w-7xl px-3 pb-14 sm:px-4">
-          <Authenticated>
-            <Dashboard />
-          </Authenticated>
+          {/* <Authenticated> */}
+          <Dashboard />
+          {/* </Authenticated>
           <Unauthenticated>
             <AuthPanel />
-          </Unauthenticated>
+          </Unauthenticated> */}
         </section>
       </main>
       <GlobalFooter />
@@ -87,7 +87,7 @@ function TopBar() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Unauthenticated>
+          {/* <Unauthenticated>
             <a
               href="#auth"
               className="inline-flex items-center gap-2 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white"
@@ -98,7 +98,7 @@ function TopBar() {
           </Unauthenticated>
           <Authenticated>
             <SignOutButton />
-          </Authenticated>
+          </Authenticated> */}
         </div>
       </div>
     </div>
