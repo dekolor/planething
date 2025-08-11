@@ -1,16 +1,16 @@
 // App.tsx
 "use client";
 
-import { Authenticated, Unauthenticated } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
+// import { Authenticated, Unauthenticated } from "convex/react";
+// import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import {
   Plane,
-  LogOut,
-  Eye,
-  EyeOff,
-  Sparkles,
+  // LogOut,
+  // Eye,
+  // EyeOff,
+  // Sparkles,
   ArrowRight,
   Moon,
   Sun,
@@ -166,159 +166,159 @@ function SkyBackdrop() {
   );
 }
 
-function SignOutButton() {
-  const { signOut } = useAuthActions();
-  return (
-    <button
-      className="inline-flex items-center gap-2 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-      onClick={() => void signOut()}
-      aria-label="Sign out"
-    >
-      <LogOut className="h-4 w-4" />
-      Sign out
-    </button>
-  );
-}
+// function SignOutButton() {
+//   const { signOut } = useAuthActions();
+//   return (
+//     <button
+//       className="inline-flex items-center gap-2 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+//       onClick={() => void signOut()}
+//       aria-label="Sign out"
+//     >
+//       <LogOut className="h-4 w-4" />
+//       Sign out
+//     </button>
+//   );
+// }
 
-function AuthPanel() {
-  const { signIn } = useAuthActions();
-  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
-  const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+// function AuthPanel() {
+//   const { signIn } = useAuthActions();
+//   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
+//   const [error, setError] = useState<string | null>(null);
+//   const [showPassword, setShowPassword] = useState(false);
 
-  return (
-    <div
-      id="auth"
-      className="mx-auto max-w-4xl px-3 sm:px-4 my-8 sm:my-12 scroll-mt-28"
-    >
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_30px_-10px_rgba(56,189,248,0.3)] min-h-[38vh] md:min-h-[42vh]">
-        <div className="pointer-events-none absolute -left-16 -top-16 h-40 w-40 rounded-full bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.14),transparent_60%)] blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-20 -right-16 h-52 w-52 rounded-full bg-[radial-gradient(circle_at_center,rgba(217,70,239,0.14),transparent_60%)] blur-2xl" />
+//   return (
+//     <div
+//       id="auth"
+//       className="mx-auto max-w-4xl px-3 sm:px-4 my-8 sm:my-12 scroll-mt-28"
+//     >
+//       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_30px_-10px_rgba(56,189,248,0.3)] min-h-[38vh] md:min-h-[42vh]">
+//         <div className="pointer-events-none absolute -left-16 -top-16 h-40 w-40 rounded-full bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.14),transparent_60%)] blur-2xl" />
+//         <div className="pointer-events-none absolute -bottom-20 -right-16 h-52 w-52 rounded-full bg-[radial-gradient(circle_at_center,rgba(217,70,239,0.14),transparent_60%)] blur-2xl" />
 
-        <div className="relative grid grid-cols-1 gap-0 md:grid-cols-2 lg:grid-cols-[1.1fr_1fr]">
-          <div className="border-b border-white/10 p-6 md:p-10 sm:border-b-0 sm:border-r">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-white/75 ring-1 ring-white/10">
-              <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
-              Welcome
-            </div>
-            <h3 className="text-xl font-semibold text-white">
-              {flow === "signIn"
-                ? "Sign in to continue"
-                : "Create your account"}
-            </h3>
-            <p className="mt-1 text-sm text-white/65">
-              {flow === "signIn"
-                ? "Access your flight command center."
-                : "Start tracking flights instantly."}
-            </p>
+//         <div className="relative grid grid-cols-1 gap-0 md:grid-cols-2 lg:grid-cols-[1.1fr_1fr]">
+//           <div className="border-b border-white/10 p-6 md:p-10 sm:border-b-0 sm:border-r">
+//             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-white/75 ring-1 ring-white/10">
+//               <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
+//               Welcome
+//             </div>
+//             <h3 className="text-xl font-semibold text-white">
+//               {flow === "signIn"
+//                 ? "Sign in to continue"
+//                 : "Create your account"}
+//             </h3>
+//             <p className="mt-1 text-sm text-white/65">
+//               {flow === "signIn"
+//                 ? "Access your flight command center."
+//                 : "Start tracking flights instantly."}
+//             </p>
 
-            <ul className="mt-4 space-y-1.5 text-sm text-white/60">
-              <li>• Minimal, glassy UI</li>
-              <li>• Live flight status</li>
-              <li>• Clean, focused details</li>
-            </ul>
-          </div>
+//             <ul className="mt-4 space-y-1.5 text-sm text-white/60">
+//               <li>• Minimal, glassy UI</li>
+//               <li>• Live flight status</li>
+//               <li>• Clean, focused details</li>
+//             </ul>
+//           </div>
 
-          <form
-            className="space-y-5 p-6 md:p-10"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              formData.set("flow", flow);
-              void signIn("password", formData).catch((err) => {
-                setError(err.message);
-              });
-            }}
-          >
-            <div className="space-y-1">
-              <label className="text-xs text-white/70" htmlFor="email">
-                Email
-              </label>
-              <input
-                className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-cyan-400/40 focus:bg-white/7"
-                type="email"
-                id="email"
-                name="email"
-                placeholder="you@domain.com"
-                autoComplete="email"
-                required
-              />
-            </div>
+//           <form
+//             className="space-y-5 p-6 md:p-10"
+//             onSubmit={(e) => {
+//               e.preventDefault();
+//               const formData = new FormData(e.target as HTMLFormElement);
+//               formData.set("flow", flow);
+//               void signIn("password", formData).catch((err) => {
+//                 setError(err.message);
+//               });
+//             }}
+//           >
+//             <div className="space-y-1">
+//               <label className="text-xs text-white/70" htmlFor="email">
+//                 Email
+//               </label>
+//               <input
+//                 className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-cyan-400/40 focus:bg-white/7"
+//                 type="email"
+//                 id="email"
+//                 name="email"
+//                 placeholder="you@domain.com"
+//                 autoComplete="email"
+//                 required
+//               />
+//             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs text-white/70" htmlFor="password">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 pr-10 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-cyan-400/40 focus:bg-white/7"
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  name="password"
-                  placeholder="••••••••"
-                  autoComplete={
-                    flow === "signUp" ? "new-password" : "current-password"
-                  }
-                  required
-                  aria-describedby={error ? "auth-error" : undefined}
-                />
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showPassword}
-                  onClick={() => setShowPassword((v) => !v)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
+//             <div className="space-y-1">
+//               <label className="text-xs text-white/70" htmlFor="password">
+//                 Password
+//               </label>
+//               <div className="relative">
+//                 <input
+//                   className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 pr-10 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-cyan-400/40 focus:bg-white/7"
+//                   type={showPassword ? "text" : "password"}
+//                   id="password"
+//                   name="password"
+//                   placeholder="••••••••"
+//                   autoComplete={
+//                     flow === "signUp" ? "new-password" : "current-password"
+//                   }
+//                   required
+//                   aria-describedby={error ? "auth-error" : undefined}
+//                 />
+//                 <button
+//                   type="button"
+//                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+//                   aria-label={showPassword ? "Hide password" : "Show password"}
+//                   aria-pressed={showPassword}
+//                   onClick={() => setShowPassword((v) => !v)}
+//                 >
+//                   {showPassword ? (
+//                     <EyeOff className="h-4 w-4" />
+//                   ) : (
+//                     <Eye className="h-4 w-4" />
+//                   )}
+//                 </button>
+//               </div>
+//             </div>
 
-            <button
-              className="w-full rounded-md bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-400 px-4 py-2.5 text-sm font-semibold text-[#0b1220] shadow-[0_10px_24px_-10px_rgba(56,189,248,0.55)] transition hover:shadow-[0_16px_36px_-12px_rgba(56,189,248,0.7)]"
-              type="submit"
-            >
-              {flow === "signIn" ? "Sign in" : "Create account"}
-            </button>
+//             <button
+//               className="w-full rounded-md bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-400 px-4 py-2.5 text-sm font-semibold text-[#0b1220] shadow-[0_10px_24px_-10px_rgba(56,189,248,0.55)] transition hover:shadow-[0_16px_36px_-12px_rgba(56,189,248,0.7)]"
+//               type="submit"
+//             >
+//               {flow === "signIn" ? "Sign in" : "Create account"}
+//             </button>
 
-            <div className="text-center">
-              <span className="text-sm text-white/65">
-                {flow === "signIn"
-                  ? "Don't have an account?"
-                  : "Already have an account?"}
-              </span>
-              <button
-                type="button"
-                className="ml-2 text-sm text-cyan-300 underline-offset-4 hover:text-cyan-200 hover:underline"
-                onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
-                aria-label={
-                  flow === "signIn" ? "Switch to sign up" : "Switch to sign in"
-                }
-              >
-                {flow === "signIn" ? "Sign up instead" : "Sign in instead"}
-              </button>
-            </div>
+//             <div className="text-center">
+//               <span className="text-sm text-white/65">
+//                 {flow === "signIn"
+//                   ? "Don't have an account?"
+//                   : "Already have an account?"}
+//               </span>
+//               <button
+//                 type="button"
+//                 className="ml-2 text-sm text-cyan-300 underline-offset-4 hover:text-cyan-200 hover:underline"
+//                 onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
+//                 aria-label={
+//                   flow === "signIn" ? "Switch to sign up" : "Switch to sign in"
+//                 }
+//               >
+//                 {flow === "signIn" ? "Sign up instead" : "Sign in instead"}
+//               </button>
+//             </div>
 
-            {error && (
-              <div
-                id="auth-error"
-                className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2.5 text-rose-300"
-                role="alert"
-                aria-live="polite"
-              >
-                <p className="text-sm">Error: {error}</p>
-              </div>
-            )}
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
+//             {error && (
+//               <div
+//                 id="auth-error"
+//                 className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2.5 text-rose-300"
+//                 role="alert"
+//                 aria-live="polite"
+//               >
+//                 <p className="text-sm">Error: {error}</p>
+//               </div>
+//             )}
+//           </form>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(() => {
