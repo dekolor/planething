@@ -238,7 +238,7 @@ export function FlightDetails() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={copyCode}
+                    onClick={() => void copyCode()}
                     className="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white"
                     aria-live="polite"
                     aria-label="Copy flight code"

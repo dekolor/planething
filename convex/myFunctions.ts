@@ -225,26 +225,133 @@ export const cleanupOldFlights = mutation({
 export const fetchFlights = action({
   args: {
     airportIcao: v.string(),
-    type: v.string(),
+    type: v.optional(v.string()), // Optional for backward compatibility
   },
 
   handler: async (ctx, args) => {
-    const data = await fetch(
-      `https://api.aviationstack.com/v1/timetable?iataCode=${args.airportIcao}&type=${args.type}&access_key=${process.env.AVIATIONSTACK_API_KEY}`,
+    const provider = process.env.FLIGHT_DATA_PROVIDER || "aerodatabox";
+    
+    if (provider === "aerodatabox") {
+      await fetchFlightsFromAeroDataBox(ctx, args.airportIcao);
+    } else if (provider === "aviationstack") {
+      await fetchFlightsFromAviationStack(ctx, args.airportIcao, args.type || "departure");
+    } else {
+      throw new Error(`Unknown flight data provider: ${provider}`);
+    }
+  },
+});
+
+async function fetchFlightsFromAeroDataBox(ctx: any, airportIcao: string) {
+  const apiKey = process.env.AERODATABOX_API_KEY;
+  if (!apiKey) {
+    throw new Error("AERODATABOX_API_KEY environment variable is required");
+  }
+
+  try {
+    console.log(`Fetching flights for ${airportIcao}`);
+    
+    // Fetch departures and arrivals separately using the correct AeroDataBox endpoints
+    const departures = await fetchAeroDataBoxFlights(apiKey, airportIcao, "departures");
+    const arrivals = await fetchAeroDataBoxFlights(apiKey, airportIcao, "arrivals");
+    
+    console.log(`Found ${departures.length} departures, ${arrivals.length} arrivals`);
+    
+    const allFlights = [...departures, ...arrivals];
+
+    if (allFlights.length > 0) {
+      console.log(`Upserting ${allFlights.length} flights to database`);
+      await ctx.runMutation(api.myFunctions.upsertFlights, {
+        flights: allFlights,
+      });
+      console.log(`Successfully processed ${allFlights.length} flights`);
+    } else {
+      console.log("No flights to process");
+    }
+  } catch (error) {
+    console.error("Error fetching from AeroDataBox:", error);
+    throw error;
+  }
+}
+
+async function fetchAeroDataBoxFlights(apiKey: string, airportIcao: string, direction: "departures" | "arrivals"): Promise<any[]> {
+  // Convert ICAO to IATA code for AeroDataBox API
+  const icaoToIata: Record<string, string> = {
+    "LROP": "OTP", // Bucharest Henri Coandă International Airport
+    // Add more mappings as needed
+  };
+  
+  const airportIata = icaoToIata[airportIcao] || airportIcao;
+  
+  // Get current time and create a 12-hour window
+  const now = new Date();
+  const fromTime = now.toISOString();
+  
+  // Add 12 hours to current time (max allowed by API)
+  const toTime = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString();
+  
+  // Use the AeroDataBox endpoint with IATA code
+  const url = `https://aerodatabox.p.rapidapi.com/flights/airports/iata/${airportIata}/${fromTime}/${toTime}`;
+  const params = new URLSearchParams({
+    withLeg: "true",
+    withCancelled: "true", 
+    withCodeshared: "true"
+  });
+
+  const fullUrl = `${url}?${params}`;
+  console.log(`Calling AeroDataBox API: ${fullUrl}`);
+
+  const response = await fetch(fullUrl, {
+    headers: {
+      "X-RapidAPI-Key": apiKey,
+      "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com"
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`AeroDataBox API error: ${response.status} ${response.statusText}`, errorText);
+    throw new Error(`AeroDataBox API error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  console.log(`API returned ${data[direction]?.length || 0} ${direction}`);
+  
+  
+  // Process the flights
+  const rawFlights = data[direction] || [];
+  const flights = rawFlights
+    .map((flight: any) => mapAeroDataBoxFlight(flight, direction.slice(0, -1) as "departure" | "arrival", airportIcao))
+    .filter(Boolean); // Remove null/undefined entries
+
+  console.log(`Mapped ${flights.length} valid flights from ${rawFlights.length} raw ${direction}`);
+  return flights;
+}
+
+async function fetchFlightsFromAviationStack(ctx: any, airportIcao: string, type: string) {
+  const apiKey = process.env.AVIATIONSTACK_API_KEY;
+  if (!apiKey) {
+    throw new Error("AVIATIONSTACK_API_KEY environment variable is required");
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.aviationstack.com/v1/timetable?iataCode=${airportIcao}&type=${type}&access_key=${apiKey}`,
     );
 
-    const response = await data.json();
+    if (!response.ok) {
+      throw new Error(`AviationStack API error: ${response.status} ${response.statusText}`);
+    }
 
-    const flights = response.data.map((flight: Flight) => {
+    const responseData = await response.json();
+
+    const flights = responseData.data.map((flight: Flight) => {
       return {
         airlineName: flight.airline.name,
         airlineIcao: flight.airline.icaoCode,
         codesharedAirlineName: flight.codeshared?.airline?.name ?? undefined,
-        codesharedAirlineIcao:
-          flight.codeshared?.airline?.icaoCode ?? undefined,
+        codesharedAirlineIcao: flight.codeshared?.airline?.icaoCode ?? undefined,
         codesharedFlightNumber: flight.codeshared?.flight?.number ?? undefined,
-        codesharedFlightIcao:
-          flight.codeshared?.flight?.icaoNumber ?? undefined,
+        codesharedFlightIcao: flight.codeshared?.flight?.icaoNumber ?? undefined,
         departureIcao: flight.departure.icaoCode,
         departureDelay: flight.departure.delay ?? undefined,
         departureScheduled: flight.departure.scheduledTime,
@@ -263,5 +370,119 @@ export const fetchFlights = action({
     await ctx.runMutation(api.myFunctions.upsertFlights, {
       flights,
     });
-  },
-});
+  } catch (error) {
+    console.error("Error fetching from AviationStack:", error);
+    throw error;
+  }
+}
+
+function mapAeroDataBoxFlight(flight: any, flightType: "departure" | "arrival", queryAirportIcao: string): any {
+  try {
+    // Build flightIcao using airline ICAO + flight number
+    const airlineIcao = flight.airline?.icao || flight.codeshareStatus?.operatingAirline?.icao;
+    const flightNumber = flight.number;
+    let flightIcao = airlineIcao && flightNumber ? `${airlineIcao}${flightNumber}` : flight.callSign;
+    
+    // If still no flightIcao, try to construct from flight number only
+    if (!flightIcao && flightNumber) {
+      flightIcao = `UNK${flightNumber}`;
+    }
+
+    if (!flightIcao) {
+      return null; // Skip flights with no identifier
+    }
+
+    // Check if required fields exist - extract UTC time string from AeroDataBox objects
+    const depScheduled = flight.departure?.scheduledTimeUtc || 
+                        (flight.departure?.scheduledTime?.utc) ||
+                        (typeof flight.departure?.scheduledTime === 'string' ? flight.departure.scheduledTime : null);
+    const arrScheduled = flight.arrival?.scheduledTimeUtc || 
+                        (flight.arrival?.scheduledTime?.utc) ||
+                        (typeof flight.arrival?.scheduledTime === 'string' ? flight.arrival.scheduledTime : null);
+    
+    if (!depScheduled && !arrScheduled) {
+      return null;
+    }
+
+  // Calculate delays in minutes (AeroDataBox provides time differences)
+  const getDepartureDelay = () => {
+    const actualTime = flight.departure?.actualTime?.utc || flight.departure?.actualTimeUtc;
+    const estimatedTime = flight.departure?.estimatedTime?.utc || flight.departure?.estimatedTimeUtc;
+    
+    if (actualTime && depScheduled) {
+      const scheduled = new Date(depScheduled);
+      const actual = new Date(actualTime);
+      const delayMinutes = Math.round((actual.getTime() - scheduled.getTime()) / (1000 * 60));
+      return delayMinutes > 0 ? `${delayMinutes}` : undefined;
+    }
+    if (estimatedTime && depScheduled) {
+      const scheduled = new Date(depScheduled);
+      const estimated = new Date(estimatedTime);
+      const delayMinutes = Math.round((estimated.getTime() - scheduled.getTime()) / (1000 * 60));
+      return delayMinutes > 0 ? `${delayMinutes}` : undefined;
+    }
+    return undefined;
+  };
+
+  const getArrivalDelay = () => {
+    const actualTime = flight.arrival?.actualTime?.utc || flight.arrival?.actualTimeUtc;
+    const estimatedTime = flight.arrival?.estimatedTime?.utc || flight.arrival?.estimatedTimeUtc;
+    
+    if (actualTime && arrScheduled) {
+      const scheduled = new Date(arrScheduled);
+      const actual = new Date(actualTime);
+      const delayMinutes = Math.round((actual.getTime() - scheduled.getTime()) / (1000 * 60));
+      return delayMinutes > 0 ? `${delayMinutes}` : undefined;
+    }
+    if (estimatedTime && arrScheduled) {
+      const scheduled = new Date(arrScheduled);
+      const estimated = new Date(estimatedTime);
+      const delayMinutes = Math.round((estimated.getTime() - scheduled.getTime()) / (1000 * 60));
+      return delayMinutes > 0 ? `${delayMinutes}` : undefined;
+    }
+    return undefined;
+  };
+
+  return {
+    airlineName: flight.airline?.name || flight.codeshareStatus?.operatingAirline?.name || "Unknown",
+    airlineIcao: airlineIcao || "UNK",
+    codesharedAirlineName: flight.codeshareStatus?.publishingAirline?.name ?? undefined,
+    codesharedAirlineIcao: flight.codeshareStatus?.publishingAirline?.icao ?? undefined,
+    codesharedFlightNumber: flight.codeshareStatus?.publishingFlightNumber ?? undefined,
+    codesharedFlightIcao: flight.codeshareStatus?.publishingAirline?.icao && flight.codeshareStatus?.publishingFlightNumber 
+      ? `${flight.codeshareStatus.publishingAirline.icao}${flight.codeshareStatus.publishingFlightNumber}` 
+      : undefined,
+    departureIcao: (() => {
+      // For departure flights, departure airport info is missing - use the query airport
+      // For arrival flights, departure airport info is available
+      if (flightType === "departure") {
+        return queryAirportIcao; // This is LROP for our case
+      } else {
+        return flight.departure?.airport?.icao || flight.departure?.airport?.iata || "UNK";
+      }
+    })(),
+    departureDelay: getDepartureDelay(),
+    departureScheduled: depScheduled || new Date().toISOString(),
+    departureEstimated: (flight.departure?.estimatedTime?.utc || flight.departure?.estimatedTimeUtc) ?? undefined,
+    departureTerminal: flight.departure?.terminal ?? undefined,
+    arrivalIcao: (() => {
+      // For arrival flights, arrival airport info is missing - use the query airport  
+      // For departure flights, arrival airport info is available
+      if (flightType === "arrival") {
+        return queryAirportIcao; // This is LROP for our case
+      } else {
+        return flight.arrival?.airport?.icao || flight.arrival?.airport?.iata || "UNK";
+      }
+    })(),
+    arrivalDelay: getArrivalDelay(),
+    arrivalScheduled: arrScheduled || new Date().toISOString(),
+    arrivalEstimated: (flight.arrival?.estimatedTime?.utc || flight.arrival?.estimatedTimeUtc) ?? undefined,
+    arrivalTerminal: flight.arrival?.terminal ?? undefined,
+    flightNumber: flightNumber,
+    flightIcao: flightIcao,
+  };
+  } catch (error) {
+    console.error("Error mapping AeroDataBox flight:", error);
+    return null;
+  }
+}

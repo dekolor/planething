@@ -4,18 +4,12 @@ import { api } from "./_generated/api";
 const crons = cronJobs();
 
 crons.interval(
-  "fetch OTP departures",
-  { minutes: 30 },
+  "fetch LROP flights",
+  { hours: 1 },
   api.myFunctions.fetchFlights,
   {
-    airportIcao: "OTP",
-    type: "departure",
+    airportIcao: "LROP",
   },
 );
-
-crons.cron("fetch OTP arrivals", "1,31 * * * *", api.myFunctions.fetchFlights, {
-  airportIcao: "OTP",
-  type: "arrival",
-});
 
 export default crons;

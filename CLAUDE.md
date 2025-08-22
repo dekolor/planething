@@ -44,21 +44,22 @@ Planething is a React-based flight tracking dashboard that displays real-time fl
   - `addFlights` - Mutation to bulk insert flight data (legacy)
   - `cleanupOldFlights` - Mutation to remove flights older than specified hours
   - `truncateFlights` - Mutation to clear all flights (legacy)
-  - `fetchFlights` - Action to fetch live flight data from AviationStack API with upsert
+  - `fetchFlights` - Action to fetch live flight data with modular provider support (AeroDataBox/AviationStack)
 - **auth.config.ts** - Convex Auth configuration
 - **auth.ts** - Authentication setup (likely exports auth utilities)
 
 ### Key Data Flow
-1. Flight data is fetched from AviationStack API via `fetchFlights` action (departures/arrivals separately)
-2. Data is processed and upserted to Convex flights table (updates existing, inserts new)
-3. Upsert prevents data loss when departure/arrival fetches run at different times
-4. Frontend queries flights using paginated `listFlights` (10 per page) and displays in dashboard format
-5. Stats header uses separate `getFlightStats` query to show totals for ALL flights in database
-6. Infinite scrolling loads more flights as user scrolls down using intersection observer
-7. Clicking on flight cards navigates to `/flight/:id` route showing detailed flight information
-8. Flight details page uses `getFlightById` to fetch comprehensive flight data
-9. Old flights can be cleaned up using `cleanupOldFlights` mutation
-10. UI shows flight cards with departure/arrival info, delays, and real-time status
+1. Flight data is fetched via `fetchFlights` action with configurable providers (AeroDataBox default, AviationStack legacy)
+2. AeroDataBox fetches both departures and arrivals in a single hourly call; AviationStack fetches separately 
+3. Data is processed and upserted to Convex flights table (updates existing, inserts new)
+4. Upsert prevents data loss and handles provider-specific field mapping
+5. Frontend queries flights using paginated `listFlights` (10 per page) and displays in dashboard format
+6. Stats header uses separate `getFlightStats` query to show totals for ALL flights in database
+7. Infinite scrolling loads more flights as user scrolls down using intersection observer
+8. Clicking on flight cards navigates to `/flight/:id` route showing detailed flight information
+9. Flight details page uses `getFlightById` to fetch comprehensive flight data
+10. Old flights can be cleaned up using `cleanupOldFlights` mutation
+11. UI shows flight cards with departure/arrival info, delays, and real-time status
 
 ## Technology Stack
 
@@ -71,16 +72,32 @@ Planething is a React-based flight tracking dashboard that displays real-time fl
 
 ## External APIs
 
-- **AviationStack API**: Used for fetching real-time flight departure data
-- API key required as `AVIATIONSTACK_API_KEY` environment variable
-- Currently configured for OTP (Bucharest Henri Coandă International Airport) departures
+### AeroDataBox API (Default Provider)
+- **Primary provider** for fetching real-time flight schedules via RapidAPI
+- Fetches both departures and arrivals in a single hourly call 
+- API key required as `AERODATABOX_API_KEY` environment variable
+- Endpoint: `GET /flights/airports/iata/{code}/{fromLocal}/{toLocal}`
+- Includes comprehensive flight data with legs, cancellations, and codeshares
+
+### AviationStack API (Legacy Provider) 
+- **Legacy provider** for fetching real-time flight departure data
+- API key required as `AVIATIONSTACK_API_KEY` environment variable (optional if using AeroDataBox)
+- Currently configured for OTP (Bucharest Henri Coandă International Airport)
+
+### Provider Configuration
+- Set `FLIGHT_DATA_PROVIDER=aerodatabox` (default) or `FLIGHT_DATA_PROVIDER=aviationstack`
+- Modular design allows easy switching between providers
 
 ## Environment Setup
 
 Ensure you have:
-1. `AVIATIONSTACK_API_KEY` environment variable set
-2. Convex project configured (via `npx convex dev`)
-3. Node.js and npm installed
+1. **Required**: `AERODATABOX_API_KEY` environment variable set (RapidAPI key for AeroDataBox)
+2. **Optional**: `AVIATIONSTACK_API_KEY` environment variable (only if using AviationStack provider)
+3. **Optional**: `FLIGHT_DATA_PROVIDER` environment variable (defaults to "aerodatabox")
+4. Convex project configured (via `npx convex dev`)
+5. Node.js and npm installed
+
+See `.env.example` for complete environment variable reference.
 
 ## Development Notes
 
